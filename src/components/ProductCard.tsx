@@ -57,7 +57,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNotificatio
 
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
-          {product.isBestseller && (
+          {product.isOffer && (
+            <span className="bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 text-white text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-sm shadow-md flex items-center gap-1 animate-pulse">
+              <span>{product.discountPercent || 50}% OFF</span>
+            </span>
+          )}
+          {product.isBestseller && !product.isOffer && (
             <span className="bg-brand-noir text-brand-gold text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-sm shadow-sm">
               Bestseller
             </span>
@@ -127,10 +132,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNotificatio
 
         <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between">
           <div>
-            <span className="text-xs text-stone-400 uppercase tracking-wider block font-sans">Price</span>
-            <span className="text-lg font-bold text-brand-noir font-sans">
-              {formatCurrency(product.price)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-brand-noir font-sans">
+                {formatCurrency(product.price)}
+              </span>
+              {product.originalPrice && (
+                <span className="text-xs text-stone-400 line-through font-sans">
+                  {formatCurrency(product.originalPrice)}
+                </span>
+              )}
+            </div>
+            {product.isOffer && (
+              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
+                Save {formatCurrency(product.originalPrice! - product.price)} (50% OFF)
+              </span>
+            )}
           </div>
 
           {/* Mobile direct Add button */}

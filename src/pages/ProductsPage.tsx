@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Search, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { Search, SlidersHorizontal, Sparkles, Flame, ArrowRight } from 'lucide-react';
 import { PRODUCTS, CATEGORIES } from '../data/products';
 import { ProductCard } from '../components/ProductCard';
 import { Toast } from '../components/Toast';
@@ -63,6 +63,32 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-10">
+      
+      {/* New Year Sale Callout Banner */}
+      <div className="bg-gradient-to-r from-stone-900 via-brand-noir to-stone-900 text-white rounded-2xl p-5 sm:p-6 border border-amber-500/40 shadow-elevated flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5 text-center sm:text-left">
+          <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+            <Flame className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-serif font-bold text-base text-brand-gold">
+              New Year Sale 2026 is Live!
+            </h3>
+            <p className="text-xs text-stone-300">
+              Enjoy Flat 50% Off on our exclusive limited-edition celebratory flacons.
+            </p>
+          </div>
+        </div>
+
+        <Link
+          to="/offers"
+          className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:brightness-110 text-white rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shrink-0 shadow-md transition-all"
+        >
+          <span>View 50% Offers</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+
       {/* Header Banner */}
       <div className="text-center max-w-2xl mx-auto space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-stone text-xs font-semibold uppercase tracking-widest text-brand-800">

@@ -17,6 +17,11 @@ export interface Product {
   reviewCount?: number;
   isFeatured?: boolean;
   isBestseller?: boolean;
+  // Special Offers & Sales
+  originalPrice?: number;
+  discountPercent?: number;
+  isOffer?: boolean;
+  offerTag?: string;
 }
 
 export interface CartItem {

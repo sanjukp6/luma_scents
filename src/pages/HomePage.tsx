@@ -1,17 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, Droplets, Compass, Award } from 'lucide-react';
-import { PRODUCTS } from '../data/products';
+import { ArrowRight, Sparkles, Droplets, Compass, Award, Flame } from 'lucide-react';
+import { PRODUCTS, OFFER_PRODUCTS } from '../data/products';
 import { ProductCard } from '../components/ProductCard';
 import { Toast } from '../components/Toast';
 
 export const HomePage: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const featuredProducts = PRODUCTS.filter((p) => p.isFeatured);
+  const featuredProducts = PRODUCTS.filter((p) => p.isFeatured && !p.isOffer).slice(0, 4);
+  const newYearOfferProducts = OFFER_PRODUCTS.slice(0, 3);
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
+  };
+
+  // Google Tag Manager / GA4 view_promotion event on homepage load
+  useEffect(() => {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ ecommerce: null });
+    window.dataLayer.push({
+      event: 'view_promotion',
+      ecommerce: {
+        promotion_id: 'PROMO_NY2026_50OFF',
+        promotion_name: 'New Year Sale 2026 - Flat 50% Off',
+        creative_name: 'New Year 2026 Hero & Spotlight Banners',
+        creative_slot: 'homepage_featured',
+        location_id: 'homepage',
+        items: newYearOfferProducts.map((p, index) => ({
+          item_id: p.id,
+          item_name: p.name,
+          item_brand: p.brand,
+          item_category: p.category,
+          item_variant: p.variant,
+          price: p.price,
+          index: index + 1,
+        })),
+      },
+    });
+  }, []);
+
+  // DataLayer event when user clicks the Hero offer button (without items array)
+  const handleHeroOfferClick = () => {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'offer_button_click',
+      offer_name: 'New Year Sale 2026',
+      discount: '50% OFF',
+      button_text: 'New Year Sale (50% OFF)',
+      button_location: 'homepage_hero',
+      target_page: '/offers'
+    });
+  };
+
+  // DataLayer event when user clicks the Spotlight section offer button (without items array)
+  const handleSpotlightOfferClick = () => {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'offer_button_click',
+      offer_name: 'New Year Sale 2026',
+      discount: '50% OFF',
+      button_text: 'Explore All 50% Offers',
+      button_location: 'homepage_spotlight',
+      target_page: '/offers'
+    });
   };
 
   return (
@@ -37,19 +89,21 @@ export const HomePage: React.FC = () => {
 
               <div className="pt-4 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                 <Link
-                  to="/products"
-                  id="hero-shop-collection-cta"
-                  className="w-full sm:w-auto px-8 py-4 bg-brand-noir text-brand-gold-light hover:bg-brand-800 hover:text-white rounded-lg font-medium tracking-wider uppercase text-sm shadow-elevated hover:shadow-gold-glow transition-all duration-300 flex items-center justify-center gap-2 group"
+                  to="/offers"
+                  id="hero-new-year-sale-cta"
+                  onClick={handleHeroOfferClick}
+                  className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 text-white hover:brightness-110 rounded-lg font-medium tracking-wider uppercase text-sm shadow-elevated flex items-center justify-center gap-2 group animate-pulse"
                 >
-                  <span>Shop Collection</span>
+                  <Sparkles className="w-4 h-4 text-amber-200" />
+                  <span>New Year Sale (50% OFF)</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 
                 <Link
-                  to="/products?category=Perfume"
+                  to="/products"
                   className="w-full sm:w-auto px-6 py-4 bg-white/80 hover:bg-white text-stone-800 rounded-lg font-medium tracking-wider uppercase text-sm border border-brand-stone shadow-subtle hover:border-brand-400 transition-all flex items-center justify-center"
                 >
-                  Explore Parfums
+                  Shop Full Collection
                 </Link>
               </div>
 
@@ -103,6 +157,50 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* NEW YEAR SALE 2026 SPECIAL SPOTLIGHT SECTION */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-gradient-to-br from-brand-noir via-stone-900 to-stone-950 text-white rounded-3xl p-8 sm:p-12 border border-amber-500/40 shadow-2xl space-y-10 relative overflow-hidden">
+          {/* Subtle gold glow */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 blur-3xl rounded-full pointer-events-none"></div>
+
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10 border-b border-stone-800 pb-8">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-brand-gold text-xs font-bold uppercase tracking-widest">
+                <Flame className="w-4 h-4 text-amber-400" />
+                <span>New Year Sale 2026 • Flat 50% Off</span>
+              </div>
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white">
+                Limited Edition <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-300 bg-clip-text text-transparent">2026 Flacons</span>
+              </h2>
+              <p className="text-stone-300 text-sm sm:text-base max-w-xl">
+                Exclusive celebratory formulations handcrafted for 2026. Available at a special 50% deduction while limited atelier stock remains.
+              </p>
+            </div>
+
+            <Link
+              to="/offers"
+              id="spotlight-new-year-sale-cta"
+              onClick={handleSpotlightOfferClick}
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 text-white hover:brightness-110 rounded-lg text-xs font-bold uppercase tracking-wider shadow-lg transition-all shrink-0"
+            >
+              <span>Explore All 50% Offers</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {/* New Year Offer Preview Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+            {newYearOfferProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onNotification={showNotification}
+              />
+            ))}
           </div>
         </div>
       </section>

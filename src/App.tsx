@@ -10,6 +10,7 @@ import { ProductDetailPage } from './pages/ProductDetailPage';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { OrderSuccessPage } from './pages/OrderSuccessPage';
+import { OffersPage } from './pages/OffersPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 // Scroll restoration component
@@ -36,6 +37,8 @@ export const App: React.FC = () => {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/products/:id" element={<ProductDetailPage />} />
+                <Route path="/offers" element={<OffersPage />} />
+                <Route path="/new-year-sale-2026" element={<OffersPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/order-success" element={<OrderSuccessPage />} />

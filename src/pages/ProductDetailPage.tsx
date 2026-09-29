@@ -156,11 +156,16 @@ export const ProductDetailPage: React.FC = () => {
               alt={product.name}
               className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
             />
-            {product.isBestseller && (
+            {product.isOffer ? (
+              <span className="absolute top-4 left-4 bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 text-white text-xs font-bold uppercase tracking-widest px-3.5 py-1.5 rounded-md shadow-lg flex items-center gap-1.5 animate-pulse">
+                <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                <span>{product.discountPercent || 50}% OFF • New Year 2026</span>
+              </span>
+            ) : product.isBestseller ? (
               <span className="absolute top-4 left-4 bg-brand-noir text-brand-gold text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm shadow-md">
                 Atelier Bestseller
               </span>
-            )}
+            ) : null}
             <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-md text-xs font-semibold text-stone-800 shadow-sm">
               {product.variant}
             </div>
@@ -188,9 +193,16 @@ export const ProductDetailPage: React.FC = () => {
           {/* Brand & Category */}
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <span className="text-xs font-bold uppercase tracking-widest text-brand-700">
-                {product.brand}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-brand-700">
+                  {product.brand}
+                </span>
+                {product.isOffer && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                    🎉 New Year 2026 Special
+                  </span>
+                )}
+              </div>
               <span className="text-xs text-stone-400 block tracking-wider uppercase">
                 Category: {product.category} • SKU: {product.id}
               </span>
@@ -211,13 +223,33 @@ export const ProductDetailPage: React.FC = () => {
           </h1>
 
           {/* Price & Variant */}
-          <div className="flex items-baseline gap-4 py-2 border-y border-stone-200">
-            <span className="font-sans text-3xl font-bold text-brand-noir">
-              {formatCurrency(product.price)}
-            </span>
-            <span className="text-sm text-stone-500 font-medium">
-              Tax included • Free Shipping on orders &ge; ₹1,000
-            </span>
+          <div className="py-3 border-y border-stone-200 space-y-1.5">
+            <div className="flex flex-wrap items-baseline gap-3 sm:gap-4">
+              <span className="font-sans text-3xl sm:text-4xl font-bold text-brand-noir">
+                {formatCurrency(product.price)}
+              </span>
+              {product.originalPrice && (
+                <span className="text-lg sm:text-xl text-stone-400 line-through font-sans">
+                  {formatCurrency(product.originalPrice)}
+                </span>
+              )}
+              {product.isOffer && (
+                <span className="px-2.5 py-1 rounded bg-amber-600 text-white text-xs font-bold uppercase tracking-wider shadow-sm">
+                  {product.discountPercent || 50}% OFF
+                </span>
+              )}
+            </div>
+
+            {product.isOffer && product.originalPrice && (
+              <div className="text-xs text-amber-800 font-semibold bg-amber-50/80 px-3 py-1.5 rounded-lg border border-amber-200 flex items-center justify-between">
+                <span>🎉 New Year 2026 Deal: You Save {formatCurrency(product.originalPrice - product.price)}!</span>
+                <span className="text-[11px] text-amber-700 font-mono font-bold">50% APPLIED</span>
+              </div>
+            )}
+
+            <p className="text-xs text-stone-500 font-medium pt-1">
+              Tax included • Free Express Shipping on orders &ge; ₹1,000
+            </p>
           </div>
 
           {/* Description */}
