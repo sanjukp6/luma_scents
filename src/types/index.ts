@@ -52,3 +52,10 @@ export interface CartTotals {
   total: number;
   itemCount: number;
 }
+
+declare global {
+  interface Window {
+    dataLayer?: Record<string, any>[];
+  }
+}
+
