@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, Lock, ArrowLeft, AlertCircle, ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -25,6 +25,31 @@ export const CheckoutPage: React.FC = () => {
   const [errors, setErrors] = useState<Partial<Record<keyof Customer, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Google Tag Manager / GA4 Begin Checkout Event
+  useEffect(() => {
+    if (items.length > 0) {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
+      window.dataLayer.push({
+        event: 'begin_checkout',
+        ecommerce: {
+          currency: 'INR',
+          value: totals.total,
+          items: items.map((item, index) => ({
+            item_id: item.product.id,
+            item_name: item.product.name,
+            item_brand: item.product.brand,
+            item_category: item.product.category,
+            item_variant: item.product.variant,
+            price: item.product.price,
+            quantity: item.quantity,
+            index: index + 1,
+          })),
+        },
+      });
+    }
+  }, []); // Fires once when customer initiates checkout
 
   // If cart is empty, show redirection prompt
   if (items.length === 0) {
@@ -108,6 +133,30 @@ export const CheckoutPage: React.FC = () => {
         totals.total
       );
 
+      // Google Tag Manager / GA4 Purchase Event
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
+      window.dataLayer.push({
+        event: "purchase",
+        ecommerce: {
+          transaction_id: createdOrder.transactionId,
+          value: createdOrder.total,
+          shipping: createdOrder.shipping,
+          tax: 0,
+          currency: "INR",
+          items: createdOrder.items.map((item, index) => ({
+            item_id: item.product.id,
+            item_name: item.product.name,
+            item_brand: item.product.brand,
+            item_category: item.product.category,
+            item_variant: item.product.variant,
+            price: item.product.price,
+            quantity: item.quantity,
+            index: index + 1,
+          }))
+        }
+      });
+
       // Clear the shopping cart
       clearCart();
 
@@ -121,7 +170,7 @@ export const CheckoutPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-10">
-      
+
       {/* Header */}
       <div className="border-b border-brand-stone pb-6 flex items-center justify-between">
         <div>
@@ -137,10 +186,10 @@ export const CheckoutPage: React.FC = () => {
       </div>
 
       <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-10 sm:gap-12 items-start">
-        
+
         {/* Left Column: Customer and Shipping Form */}
         <div className="lg:col-span-7 space-y-8">
-          
+
           {/* Contact Information */}
           <div className="bg-white p-6 sm:p-8 rounded-2xl border border-brand-stone shadow-subtle space-y-6">
             <h2 className="font-serif text-xl font-bold text-brand-noir border-b border-stone-100 pb-3">
@@ -148,7 +197,7 @@ export const CheckoutPage: React.FC = () => {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              
+
               {/* Full Name */}
               <div className="sm:col-span-2 space-y-1.5">
                 <label htmlFor="customer-name" className="block text-xs font-bold uppercase tracking-wider text-stone-700">
@@ -160,9 +209,8 @@ export const CheckoutPage: React.FC = () => {
                   value={customer.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   placeholder="e.g. Eleanor Vance"
-                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${
-                    errors.name ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
-                  }`}
+                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${errors.name ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
+                    }`}
                 />
                 {errors.name && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.name}</p>}
               </div>
@@ -178,9 +226,8 @@ export const CheckoutPage: React.FC = () => {
                   value={customer.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="eleanor@example.com"
-                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${
-                    errors.email ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
-                  }`}
+                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${errors.email ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
+                    }`}
                 />
                 {errors.email && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.email}</p>}
               </div>
@@ -196,9 +243,8 @@ export const CheckoutPage: React.FC = () => {
                   value={customer.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   placeholder="+91 98765 43210"
-                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${
-                    errors.phone ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
-                  }`}
+                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${errors.phone ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
+                    }`}
                 />
                 {errors.phone && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.phone}</p>}
               </div>
@@ -213,7 +259,7 @@ export const CheckoutPage: React.FC = () => {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              
+
               {/* Address */}
               <div className="sm:col-span-2 space-y-1.5">
                 <label htmlFor="customer-address" className="block text-xs font-bold uppercase tracking-wider text-stone-700">
@@ -225,9 +271,8 @@ export const CheckoutPage: React.FC = () => {
                   value={customer.address}
                   onChange={(e) => handleInputChange('address', e.target.value)}
                   placeholder="Apartment 4B, 12 Kensington Boulevard"
-                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${
-                    errors.address ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
-                  }`}
+                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${errors.address ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
+                    }`}
                 />
                 {errors.address && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.address}</p>}
               </div>
@@ -243,9 +288,8 @@ export const CheckoutPage: React.FC = () => {
                   value={customer.city}
                   onChange={(e) => handleInputChange('city', e.target.value)}
                   placeholder="Mumbai"
-                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${
-                    errors.city ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
-                  }`}
+                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${errors.city ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
+                    }`}
                 />
                 {errors.city && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.city}</p>}
               </div>
@@ -261,9 +305,8 @@ export const CheckoutPage: React.FC = () => {
                   value={customer.state}
                   onChange={(e) => handleInputChange('state', e.target.value)}
                   placeholder="Maharashtra"
-                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${
-                    errors.state ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
-                  }`}
+                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${errors.state ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
+                    }`}
                 />
                 {errors.state && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.state}</p>}
               </div>
@@ -279,9 +322,8 @@ export const CheckoutPage: React.FC = () => {
                   value={customer.pincode}
                   onChange={(e) => handleInputChange('pincode', e.target.value)}
                   placeholder="400001"
-                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${
-                    errors.pincode ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
-                  }`}
+                  className={`w-full px-4 py-2.5 bg-stone-50 border rounded-lg text-sm text-stone-900 focus:outline-none focus:ring-2 ${errors.pincode ? 'border-red-500 ring-red-200' : 'border-stone-200 focus:ring-brand-500/30 focus:border-brand-500'
+                    }`}
                 />
                 {errors.pincode && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.pincode}</p>}
               </div>
@@ -367,11 +409,10 @@ export const CheckoutPage: React.FC = () => {
               type="submit"
               id="place-order-button"
               disabled={isSubmitting}
-              className={`w-full py-4 px-6 rounded-lg font-medium tracking-wider uppercase text-sm shadow-elevated transition-all duration-300 flex items-center justify-center gap-2 ${
-                isSubmitting
-                  ? 'bg-stone-400 text-white cursor-wait'
-                  : 'bg-brand-noir text-brand-gold-light hover:bg-brand-800 hover:text-white hover:shadow-gold-glow'
-              }`}
+              className={`w-full py-4 px-6 rounded-lg font-medium tracking-wider uppercase text-sm shadow-elevated transition-all duration-300 flex items-center justify-center gap-2 ${isSubmitting
+                ? 'bg-stone-400 text-white cursor-wait'
+                : 'bg-brand-noir text-brand-gold-light hover:bg-brand-800 hover:text-white hover:shadow-gold-glow'
+                }`}
             >
               {isSubmitting ? (
                 <span>Authorizing Order...</span>
