@@ -30,6 +30,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNotificatio
     if (result.success) {
       setJustAdded(true);
       if (onNotification) onNotification(result.message, 'success');
+
+      // DataLayer GA4 ecommerce add_to_cart event
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
+      window.dataLayer.push({
+        event: "add_to_cart",
+        ecommerce: {
+          currency: "INR",
+          value: product.price,
+          items: [{
+            item_id: product.id,
+            item_name: product.name,
+            item_brand: product.brand,
+            item_category: product.category,
+            item_variant: product.variant,
+            price: product.price,
+            quantity: 1
+          }]
+        }
+      });
+
       setTimeout(() => setJustAdded(false), 1800);
     } else {
       if (onNotification) onNotification(result.message, 'error');
