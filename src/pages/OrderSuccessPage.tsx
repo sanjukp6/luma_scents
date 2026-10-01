@@ -198,6 +198,13 @@ export const OrderSuccessPage: React.FC = () => {
           <ArrowRight className="w-4 h-4" />
         </Link>
         <Link
+          to={`/refund?transactionId=${order.transactionId}`}
+          id="refund-portal-btn"
+          className="w-full sm:w-auto px-6 py-4 bg-brand-stone/60 border border-brand-stone text-brand-noir hover:bg-brand-stone rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all"
+        >
+          <span>Returns & Refund Portal</span>
+        </Link>
+        <Link
           to="/"
           className="w-full sm:w-auto px-6 py-4 bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center"
         >

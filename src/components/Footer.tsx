@@ -76,6 +76,9 @@ export const Footer: React.FC = () => {
               <li>
                 <Link to="/checkout" className="hover:text-brand-gold transition-colors">Checkout</Link>
               </li>
+              <li>
+                <Link to="/refund" className="hover:text-brand-gold transition-colors">Returns & Refund</Link>
+              </li>
             </ul>
           </div>
 

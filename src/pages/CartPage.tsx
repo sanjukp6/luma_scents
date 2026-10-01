@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ShoppingBag,
@@ -18,9 +18,110 @@ export const CartPage: React.FC = () => {
   const { items, updateQuantity, removeFromCart, clearCart, totals, freeShippingThreshold, amountUntilFreeShipping } = useCart();
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Google Tag Manager / GA4 view_cart Event
+  useEffect(() => {
+    if (items.length > 0) {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
+      window.dataLayer.push({
+        event: 'view_cart',
+        ecommerce: {
+          currency: 'INR',
+          value: totals.total,
+          items: items.map((item, index) => ({
+            item_id: item.product.id,
+            item_name: item.product.name,
+            item_brand: item.product.brand,
+            item_category: item.product.category,
+            item_variant: item.product.variant,
+            price: item.product.price,
+            quantity: item.quantity,
+            index: index + 1,
+          })),
+        },
+      });
+    }
+  }, []); // Fires on cart page view
+
   const handleRemove = (productId: string, productName: string) => {
+    const itemToRemove = items.find((i) => i.product.id === productId);
+    if (itemToRemove) {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
+      window.dataLayer.push({
+        event: 'remove_from_cart',
+        ecommerce: {
+          currency: 'INR',
+          value: itemToRemove.product.price * itemToRemove.quantity,
+          items: [{
+            item_id: itemToRemove.product.id,
+            item_name: itemToRemove.product.name,
+            item_brand: itemToRemove.product.brand,
+            item_category: itemToRemove.product.category,
+            item_variant: itemToRemove.product.variant,
+            price: itemToRemove.product.price,
+            quantity: itemToRemove.quantity,
+          }],
+        },
+      });
+    }
+
     removeFromCart(productId);
     setToast({ message: `Removed ${productName} from your cart`, type: 'info' as any });
+  };
+
+  const handleQuantityDecrement = (productId: string, currentQty: number, productName: string) => {
+    if (currentQty <= 1) {
+      handleRemove(productId, productName);
+    } else {
+      const itemToChange = items.find((i) => i.product.id === productId);
+      if (itemToChange) {
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({ ecommerce: null });
+        window.dataLayer.push({
+          event: 'remove_from_cart',
+          ecommerce: {
+            currency: 'INR',
+            value: itemToChange.product.price,
+            items: [{
+              item_id: itemToChange.product.id,
+              item_name: itemToChange.product.name,
+              item_brand: itemToChange.product.brand,
+              item_category: itemToChange.product.category,
+              item_variant: itemToChange.product.variant,
+              price: itemToChange.product.price,
+              quantity: 1,
+            }],
+          },
+        });
+      }
+      updateQuantity(productId, currentQty - 1);
+    }
+  };
+
+  const handleClearCart = () => {
+    if (items.length > 0) {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ ecommerce: null });
+      window.dataLayer.push({
+        event: 'remove_from_cart',
+        ecommerce: {
+          currency: 'INR',
+          value: totals.subtotal,
+          items: items.map((item, index) => ({
+            item_id: item.product.id,
+            item_name: item.product.name,
+            item_brand: item.product.brand,
+            item_category: item.product.category,
+            item_variant: item.product.variant,
+            price: item.product.price,
+            quantity: item.quantity,
+            index: index + 1,
+          })),
+        },
+      });
+      clearCart();
+    }
   };
 
   const handleProceedToCheckout = () => {
@@ -71,7 +172,7 @@ export const CartPage: React.FC = () => {
 
         <button
           type="button"
-          onClick={clearCart}
+          onClick={handleClearCart}
           className="text-xs font-semibold uppercase tracking-wider text-stone-500 hover:text-red-600 transition-colors self-start sm:self-auto"
         >
           Clear Entire Bag
@@ -159,7 +260,7 @@ export const CartPage: React.FC = () => {
                       <button
                         type="button"
                         id={`cart-decrement-${product.id}`}
-                        onClick={() => updateQuantity(product.id, quantity - 1)}
+                        onClick={() => handleQuantityDecrement(product.id, quantity, product.name)}
                         className="px-3 py-1.5 text-stone-600 hover:text-brand-900 font-bold text-sm"
                         aria-label={`Decrease quantity of ${product.name}`}
                       >

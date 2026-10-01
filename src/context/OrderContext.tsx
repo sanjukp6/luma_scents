@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { Customer, CartItem, Order } from '../types';
+import { Customer, CartItem, Order, RefundRecord } from '../types';
 import { generateTransactionId } from '../utils/idGenerator';
 
 interface OrderContextType {
@@ -10,10 +10,20 @@ interface OrderContextType {
     items: CartItem[],
     subtotal: number,
     shipping: number,
-    total: number
+    total: number,
+    paymentMethod?: string
   ) => Promise<Order>;
   getOrderById: (transactionId: string) => Order | null;
   setCurrentOrder: (order: Order | null) => void;
+  processRefund: (
+    transactionId: string,
+    refundData: {
+      items: { productId: string; quantity: number; amount: number }[];
+      amount: number;
+      reason: string;
+      payoutMethod: string;
+    }
+  ) => Promise<RefundRecord>;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -53,14 +63,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
    * 3. Constructs the structured Order object
    * 4. Persists to storage
    * 5. Returns completed Order object for checkout flow
-   * (dataLayer.push purchase event will be attached here later)
    */
   const placeOrder = async (
     customer: Customer,
     items: CartItem[],
     subtotal: number,
     shipping: number,
-    total: number
+    total: number,
+    paymentMethod: string = 'UPI'
   ): Promise<Order> => {
     // Validate inputs
     if (!items || items.length === 0) {
@@ -83,6 +93,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       shipping,
       total,
       currency: 'INR',
+      paymentMethod,
       status: 'success',
       createdAt: new Date().toISOString(),
     };
@@ -102,6 +113,59 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newOrder;
   };
 
+  const processRefund = async (
+    transactionId: string,
+    refundData: {
+      items: { productId: string; quantity: number; amount: number }[];
+      amount: number;
+      reason: string;
+      payoutMethod: string;
+    }
+  ): Promise<RefundRecord> => {
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    const refundId = `REF-${Math.floor(100000 + Math.random() * 900000)}`;
+    const refundRecord: RefundRecord = {
+      refundId,
+      transactionId,
+      amount: refundData.amount,
+      reason: refundData.reason,
+      payoutMethod: refundData.payoutMethod,
+      items: refundData.items,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedOrders = orders.map((order) => {
+      if (order.transactionId.toLowerCase() === transactionId.toLowerCase()) {
+        const isFull = refundData.amount >= order.total;
+        return {
+          ...order,
+          status: (isFull ? 'refunded' : 'partially_refunded') as Order['status'],
+          refundDetails: refundRecord,
+        };
+      }
+      return order;
+    });
+
+    setOrders(updatedOrders);
+    if (currentOrder && currentOrder.transactionId.toLowerCase() === transactionId.toLowerCase()) {
+      const isFull = refundData.amount >= currentOrder.total;
+      setCurrentOrder({
+        ...currentOrder,
+        status: (isFull ? 'refunded' : 'partially_refunded') as Order['status'],
+        refundDetails: refundRecord,
+      });
+    }
+
+    try {
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(updatedOrders));
+    } catch (e) {
+      console.error('Failed to persist refund in localStorage', e);
+    }
+
+    return refundRecord;
+  };
+
   const getOrderById = (transactionId: string): Order | null => {
     const found = orders.find((o) => o.transactionId.toLowerCase() === transactionId.toLowerCase());
     if (found) return found;
@@ -119,6 +183,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         placeOrder,
         getOrderById,
         setCurrentOrder,
+        processRefund,
       }}
     >
       {children}

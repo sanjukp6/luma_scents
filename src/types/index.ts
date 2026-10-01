@@ -39,6 +39,22 @@ export interface Customer {
   pincode: string;
 }
 
+export interface RefundItem {
+  productId: string;
+  quantity: number;
+  amount: number;
+}
+
+export interface RefundRecord {
+  refundId: string;
+  transactionId: string;
+  amount: number;
+  reason: string;
+  payoutMethod: string;
+  items: RefundItem[];
+  createdAt: string;
+}
+
 export interface Order {
   transactionId: string;
   customer: Customer;
@@ -47,7 +63,9 @@ export interface Order {
   shipping: number;
   total: number;
   currency: string;
-  status: 'success' | 'pending' | 'failed';
+  paymentMethod?: string;
+  status: 'success' | 'pending' | 'failed' | 'refunded' | 'partially_refunded';
+  refundDetails?: RefundRecord;
   createdAt: string;
 }
 

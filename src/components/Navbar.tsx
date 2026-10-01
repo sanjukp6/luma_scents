@@ -12,6 +12,7 @@ export const Navbar: React.FC = () => {
     { name: 'Home', path: '/' },
     { name: 'Collection', path: '/products' },
     { name: 'New Year Sale 2026', path: '/offers', badge: '50% OFF' },
+    { name: 'Returns & Refund', path: '/refund' },
   ];
 
   const closeMobileMenu = () => setMobileMenuOpen(false);

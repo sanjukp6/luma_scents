@@ -24,6 +24,30 @@ export const ProductsPage: React.FC = () => {
     }
   }, [searchParams]);
 
+  // Google Tag Manager / GA4 view_item_list Event
+  useEffect(() => {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ ecommerce: null });
+    window.dataLayer.push({
+      event: 'view_item_list',
+      ecommerce: {
+        item_list_id: `category_${selectedCategory.toLowerCase().replace(/\s+/g, '_')}`,
+        item_list_name: `${selectedCategory} Fragrance Collection`,
+        items: PRODUCTS.filter((p) =>
+          selectedCategory === 'All' ? true : p.category.toLowerCase() === selectedCategory.toLowerCase()
+        ).map((product, index) => ({
+          item_id: product.id,
+          item_name: product.name,
+          item_brand: product.brand,
+          item_category: product.category,
+          item_variant: product.variant,
+          price: product.price,
+          index: index + 1,
+        })),
+      },
+    });
+  }, [selectedCategory]);
+
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
     if (category === 'All') {

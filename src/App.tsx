@@ -11,6 +11,7 @@ import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { OrderSuccessPage } from './pages/OrderSuccessPage';
 import { OffersPage } from './pages/OffersPage';
+import { RefundPage } from './pages/RefundPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 // Scroll restoration component
@@ -42,6 +43,8 @@ export const App: React.FC = () => {
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/order-success" element={<OrderSuccessPage />} />
+                <Route path="/refund" element={<RefundPage />} />
+                <Route path="/returns" element={<RefundPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </main>
