@@ -12,7 +12,8 @@ import {
   Banknote,
   CheckCircle2,
   Sparkles,
-  Truck
+  Truck,
+  Check
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useOrder } from '../context/OrderContext';
@@ -49,9 +50,12 @@ export const CheckoutPage: React.FC = () => {
   const [errors, setErrors] = useState<Partial<Record<keyof Customer, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [hasTrackedShipping, setHasTrackedShipping] = useState(false);
 
-  // Google Tag Manager / GA4 Begin Checkout Event
+  // Separate step confirmation states for explicit button clicks
+  const [shippingConfirmed, setShippingConfirmed] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+
+  // Google Tag Manager / GA4 Begin Checkout Event ONLY on mount
   useEffect(() => {
     if (items.length > 0) {
       window.dataLayer = window.dataLayer || [];
@@ -73,73 +77,86 @@ export const CheckoutPage: React.FC = () => {
           })),
         },
       });
-
-      // Default payment info tracking on initial render
-      pushPaymentInfoEvent('upi');
     }
-  }, []); // Fires once when customer initiates checkout
+  }, []); // Fires ONLY begin_checkout once when customer lands on checkout
 
-  const pushShippingInfoEvent = () => {
-    if (!hasTrackedShipping && items.length > 0) {
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({ ecommerce: null });
-      window.dataLayer.push({
-        event: 'add_shipping_info',
-        ecommerce: {
-          currency: 'INR',
-          value: totals.total,
-          shipping_tier: totals.shipping === 0 ? 'Complimentary Express' : 'Standard Express Delivery',
-          items: items.map((item, index) => ({
-            item_id: item.product.id,
-            item_name: item.product.name,
-            item_brand: item.product.brand,
-            item_category: item.product.category,
-            item_variant: item.product.variant,
-            price: item.product.price,
-            quantity: item.quantity,
-            index: index + 1,
-          })),
-        },
-      });
-      setHasTrackedShipping(true);
+  // Explicit Button Handler: Add / Confirm Shipping Info
+  const handleConfirmShippingInfo = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+
+    if (!validateForm()) {
+      setToast({ message: 'Please fill in all required shipping details before confirming.', type: 'error' });
+      return false;
     }
+
+    // Google Tag Manager / GA4 add_shipping_info event
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
+    window.dataLayer.push({
+      event: 'add_shipping_info',
+      ecommerce: {
+        currency: 'INR',
+        value: totals.total,
+        shipping_tier: totals.shipping === 0 ? 'Complimentary Express' : 'Standard Express Delivery',
+        items: items.map((item, index) => ({
+          item_id: item.product.id,
+          item_name: item.product.name,
+          item_brand: item.product.brand,
+          item_category: item.product.category,
+          item_variant: item.product.variant,
+          price: item.product.price,
+          quantity: item.quantity,
+          index: index + 1,
+        })),
+      },
+    });
+
+    setShippingConfirmed(true);
+    setToast({
+      message: 'Shipping information saved! (add_shipping_info event triggered)',
+      type: 'success'
+    });
+    return true;
   };
 
-  const pushPaymentInfoEvent = (method: PaymentMethodType) => {
-    if (items.length > 0) {
-      const methodLabels: Record<PaymentMethodType, string> = {
-        upi: 'UPI / Instant QR',
-        card: 'Credit / Debit Card',
-        netbanking: 'Net Banking',
-        cod: 'Cash on Delivery'
-      };
+  // Explicit Button Handler: Add / Confirm Payment Info
+  const handleConfirmPaymentInfo = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
 
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({ ecommerce: null });
-      window.dataLayer.push({
-        event: 'add_payment_info',
-        ecommerce: {
-          currency: 'INR',
-          value: totals.total,
-          payment_type: methodLabels[method],
-          items: items.map((item, index) => ({
-            item_id: item.product.id,
-            item_name: item.product.name,
-            item_brand: item.product.brand,
-            item_category: item.product.category,
-            item_variant: item.product.variant,
-            price: item.product.price,
-            quantity: item.quantity,
-            index: index + 1,
-          })),
-        },
-      });
-    }
-  };
+    const methodLabels: Record<PaymentMethodType, string> = {
+      upi: 'UPI / Instant QR',
+      card: 'Credit / Debit Card',
+      netbanking: 'Net Banking',
+      cod: 'Cash on Delivery'
+    };
 
-  const handleSelectPaymentMethod = (method: PaymentMethodType) => {
-    setPaymentMethod(method);
-    pushPaymentInfoEvent(method);
+    // Google Tag Manager / GA4 add_payment_info event
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
+    window.dataLayer.push({
+      event: 'add_payment_info',
+      ecommerce: {
+        currency: 'INR',
+        value: totals.total,
+        payment_type: methodLabels[paymentMethod],
+        items: items.map((item, index) => ({
+          item_id: item.product.id,
+          item_name: item.product.name,
+          item_brand: item.product.brand,
+          item_category: item.product.category,
+          item_variant: item.product.variant,
+          price: item.product.price,
+          quantity: item.quantity,
+          index: index + 1,
+        })),
+      },
+    });
+
+    setPaymentConfirmed(true);
+    setToast({
+      message: `Payment option "${methodLabels[paymentMethod]}" confirmed! (add_payment_info event triggered)`,
+      type: 'success'
+    });
   };
 
   // If cart is empty, show redirection prompt
@@ -192,6 +209,7 @@ export const CheckoutPage: React.FC = () => {
 
   const handleInputChange = (field: keyof Customer, value: string) => {
     setCustomer((prev) => ({ ...prev, [field]: value }));
+    setShippingConfirmed(false); // Reset confirmed state if user alters details
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
@@ -199,7 +217,7 @@ export const CheckoutPage: React.FC = () => {
 
   /**
    * Application Business Logic: Place Order
-   * 1. Validates required customer details
+   * 1. Ensures shipping info is validated & confirmed
    * 2. Calls order context `placeOrder()` to generate mock transaction & order object
    * 3. Clears the cart
    * 4. Fires dataLayer purchase event
@@ -211,6 +229,15 @@ export const CheckoutPage: React.FC = () => {
     if (!validateForm()) {
       setToast({ message: 'Please fix the highlighted errors before placing the order.', type: 'error' });
       return;
+    }
+
+    // If shipping info wasn't explicitly triggered via button yet, trigger it now
+    if (!shippingConfirmed) {
+      handleConfirmShippingInfo();
+    }
+    // If payment info wasn't explicitly triggered via button yet, trigger it now
+    if (!paymentConfirmed) {
+      handleConfirmPaymentInfo();
     }
 
     setIsSubmitting(true);
@@ -275,7 +302,7 @@ export const CheckoutPage: React.FC = () => {
       <div className="border-b border-brand-stone pb-6 flex items-center justify-between">
         <div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold text-brand-noir">Checkout & Dispatch</h1>
-          <p className="text-stone-500 text-sm mt-1">Please provide your delivery and payment details.</p>
+          <p className="text-stone-500 text-sm mt-1">Please confirm your shipping and payment options step-by-step.</p>
         </div>
         <Link
           to="/cart"
@@ -290,11 +317,27 @@ export const CheckoutPage: React.FC = () => {
         {/* Left Column: Customer, Shipping and Payment Form */}
         <div className="lg:col-span-7 space-y-8">
 
-          {/* Contact Information */}
+          {/* STEP 1: Customer Contact & Shipping Destination */}
           <div className="bg-white p-6 sm:p-8 rounded-2xl border border-brand-stone shadow-subtle space-y-6">
-            <h2 className="font-serif text-xl font-bold text-brand-noir border-b border-stone-100 pb-3">
-              1. Customer Contact
-            </h2>
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-6 h-6 rounded-full bg-brand-noir text-brand-gold text-xs font-bold flex items-center justify-center">
+                  1
+                </span>
+                <h2 className="font-serif text-xl font-bold text-brand-noir">
+                  Shipping Destination & Contact
+                </h2>
+              </div>
+              {shippingConfirmed ? (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1 border border-emerald-200">
+                  <Check className="w-3.5 h-3.5" /> Shipping Saved
+                </span>
+              ) : (
+                <span className="text-xs font-semibold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <Truck className="w-3.5 h-3.5" /> Express Dispatch
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
@@ -352,26 +395,7 @@ export const CheckoutPage: React.FC = () => {
                 {errors.phone && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.phone}</p>}
               </div>
 
-            </div>
-          </div>
-
-          {/* Shipping Address */}
-          <div
-            className="bg-white p-6 sm:p-8 rounded-2xl border border-brand-stone shadow-subtle space-y-6"
-            onFocus={pushShippingInfoEvent}
-          >
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <h2 className="font-serif text-xl font-bold text-brand-noir">
-                2. Shipping Destination
-              </h2>
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1 border border-emerald-200">
-                <Truck className="w-3.5 h-3.5" /> Express Dispatch
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-
-              {/* Address */}
+              {/* Street Address */}
               <div className="sm:col-span-2 space-y-1.5">
                 <label htmlFor="customer-address" className="block text-xs font-bold uppercase tracking-wider text-stone-700">
                   Street Address & Apartment / Suite *
@@ -444,17 +468,55 @@ export const CheckoutPage: React.FC = () => {
               </div>
 
             </div>
+
+            {/* SEPARATE BUTTON: Save & Confirm Shipping Info */}
+            <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+              <p className="text-[11px] text-stone-500">
+                Clicking button triggers <code>add_shipping_info</code> dataLayer event.
+              </p>
+              <button
+                type="button"
+                id="add-shipping-info-btn"
+                onClick={handleConfirmShippingInfo}
+                className={`px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-sm ${
+                  shippingConfirmed
+                    ? 'bg-emerald-700 text-white hover:bg-emerald-800'
+                    : 'bg-brand-noir text-brand-gold hover:bg-brand-800 hover:text-white'
+                }`}
+              >
+                {shippingConfirmed ? (
+                  <>
+                    <Check className="w-4 h-4" /> Shipping Info Confirmed
+                  </>
+                ) : (
+                  <>
+                    <Truck className="w-4 h-4" /> Save & Add Shipping Info
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Payment Method Selection */}
+          {/* STEP 2: Payment Method Selection */}
           <div className="bg-white p-6 sm:p-8 rounded-2xl border border-brand-stone shadow-subtle space-y-6">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <h2 className="font-serif text-xl font-bold text-brand-noir">
-                3. Payment Method
-              </h2>
-              <span className="text-xs text-stone-500 flex items-center gap-1">
-                <ShieldCheck className="w-4 h-4 text-brand-600 inline" /> 256-Bit SSL Encrypted
-              </span>
+              <div className="flex items-center gap-2.5">
+                <span className="w-6 h-6 rounded-full bg-brand-noir text-brand-gold text-xs font-bold flex items-center justify-center">
+                  2
+                </span>
+                <h2 className="font-serif text-xl font-bold text-brand-noir">
+                  Select Payment Option
+                </h2>
+              </div>
+              {paymentConfirmed ? (
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1 border border-emerald-200">
+                  <Check className="w-3.5 h-3.5" /> Payment Saved
+                </span>
+              ) : (
+                <span className="text-xs text-stone-500 flex items-center gap-1">
+                  <ShieldCheck className="w-4 h-4 text-brand-600 inline" /> 256-Bit SSL Encrypted
+                </span>
+              )}
             </div>
 
             {/* Payment Options Grid */}
@@ -462,7 +524,10 @@ export const CheckoutPage: React.FC = () => {
               
               {/* UPI / QR */}
               <div
-                onClick={() => handleSelectPaymentMethod('upi')}
+                onClick={() => {
+                  setPaymentMethod('upi');
+                  setPaymentConfirmed(false);
+                }}
                 id="payment-method-upi"
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3.5 ${
                   paymentMethod === 'upi'
@@ -487,7 +552,10 @@ export const CheckoutPage: React.FC = () => {
 
               {/* Credit / Debit Card */}
               <div
-                onClick={() => handleSelectPaymentMethod('card')}
+                onClick={() => {
+                  setPaymentMethod('card');
+                  setPaymentConfirmed(false);
+                }}
                 id="payment-method-card"
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3.5 ${
                   paymentMethod === 'card'
@@ -512,7 +580,10 @@ export const CheckoutPage: React.FC = () => {
 
               {/* Net Banking */}
               <div
-                onClick={() => handleSelectPaymentMethod('netbanking')}
+                onClick={() => {
+                  setPaymentMethod('netbanking');
+                  setPaymentConfirmed(false);
+                }}
                 id="payment-method-netbanking"
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3.5 ${
                   paymentMethod === 'netbanking'
@@ -537,7 +608,10 @@ export const CheckoutPage: React.FC = () => {
 
               {/* Cash On Delivery */}
               <div
-                onClick={() => handleSelectPaymentMethod('cod')}
+                onClick={() => {
+                  setPaymentMethod('cod');
+                  setPaymentConfirmed(false);
+                }}
                 id="payment-method-cod"
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3.5 ${
                   paymentMethod === 'cod'
@@ -575,7 +649,10 @@ export const CheckoutPage: React.FC = () => {
                   <input
                     type="text"
                     value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
+                    onChange={(e) => {
+                      setUpiId(e.target.value);
+                      setPaymentConfirmed(false);
+                    }}
                     placeholder="yourname@upi"
                     className="w-full px-4 py-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 font-mono"
                   />
@@ -592,7 +669,10 @@ export const CheckoutPage: React.FC = () => {
                     <input
                       type="text"
                       value={cardDetails.number}
-                      onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value })}
+                      onChange={(e) => {
+                        setCardDetails({ ...cardDetails, number: e.target.value });
+                        setPaymentConfirmed(false);
+                      }}
                       className="w-full px-4 py-2 bg-white border border-stone-300 rounded-lg text-sm font-mono text-stone-900"
                     />
                   </div>
@@ -602,7 +682,10 @@ export const CheckoutPage: React.FC = () => {
                       <input
                         type="text"
                         value={cardDetails.expiry}
-                        onChange={(e) => setCardDetails({ ...cardDetails, expiry: e.target.value })}
+                        onChange={(e) => {
+                          setCardDetails({ ...cardDetails, expiry: e.target.value });
+                          setPaymentConfirmed(false);
+                        }}
                         className="w-full px-4 py-2 bg-white border border-stone-300 rounded-lg text-sm font-mono text-stone-900"
                       />
                     </div>
@@ -611,7 +694,10 @@ export const CheckoutPage: React.FC = () => {
                       <input
                         type="password"
                         value={cardDetails.cvv}
-                        onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value })}
+                        onChange={(e) => {
+                          setCardDetails({ ...cardDetails, cvv: e.target.value });
+                          setPaymentConfirmed(false);
+                        }}
                         className="w-full px-4 py-2 bg-white border border-stone-300 rounded-lg text-sm font-mono text-stone-900"
                       />
                     </div>
@@ -624,7 +710,10 @@ export const CheckoutPage: React.FC = () => {
                   <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">Select Bank</label>
                   <select
                     value={selectedBank}
-                    onChange={(e) => setSelectedBank(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedBank(e.target.value);
+                      setPaymentConfirmed(false);
+                    }}
                     className="w-full px-4 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 font-medium"
                   >
                     <option value="HDFC Bank">HDFC Bank</option>
@@ -643,15 +732,42 @@ export const CheckoutPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* SEPARATE BUTTON: Confirm & Add Payment Info */}
+            <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+              <p className="text-[11px] text-stone-500">
+                Clicking button triggers <code>add_payment_info</code> dataLayer event.
+              </p>
+              <button
+                type="button"
+                id="add-payment-info-btn"
+                onClick={handleConfirmPaymentInfo}
+                className={`px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-sm ${
+                  paymentConfirmed
+                    ? 'bg-emerald-700 text-white hover:bg-emerald-800'
+                    : 'bg-brand-noir text-brand-gold hover:bg-brand-800 hover:text-white'
+                }`}
+              >
+                {paymentConfirmed ? (
+                  <>
+                    <Check className="w-4 h-4" /> Payment Info Confirmed
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4" /> Save & Add Payment Info
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Simulated Payment Notice */}
+          {/* Testing Environment Notice */}
           <div className="bg-brand-stone/40 border border-brand-stone rounded-2xl p-5 flex items-start gap-4 text-xs text-stone-700">
             <ShieldCheck className="w-5 h-5 text-brand-600 shrink-0 mt-0.5" />
             <div>
-              <strong className="block font-bold text-stone-900">Simulated Testing Environment</strong>
+              <strong className="block font-bold text-stone-900">Independent DataLayer Triggers</strong>
               <span>
-                No actual card charges are levied. Placing an order generates authentic GA4 and GTM DataLayer e-commerce events (<code>begin_checkout</code>, <code>add_shipping_info</code>, <code>add_payment_info</code>, and <code>purchase</code>) for analytics verification.
+                Use the dedicated <strong>Save & Add Shipping Info</strong> and <strong>Save & Add Payment Info</strong> buttons to fire each event individually before authorizing the purchase.
               </span>
             </div>
           </div>
