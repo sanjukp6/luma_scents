@@ -12,8 +12,7 @@ import {
   Banknote,
   CheckCircle2,
   Sparkles,
-  Truck,
-  Check
+  Truck
 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useOrder } from '../context/OrderContext';
@@ -51,10 +50,6 @@ export const CheckoutPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Separate step confirmation states for explicit button clicks
-  const [shippingConfirmed, setShippingConfirmed] = useState(false);
-  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
-
   // Google Tag Manager / GA4 Begin Checkout Event ONLY on mount
   useEffect(() => {
     if (items.length > 0) {
@@ -80,18 +75,10 @@ export const CheckoutPage: React.FC = () => {
     }
   }, []); // Fires ONLY begin_checkout once when customer lands on checkout
 
-  // Explicit Button Handler: Add / Confirm Shipping Info
-  const handleConfirmShippingInfo = (e?: React.MouseEvent) => {
-    if (e) e.preventDefault();
-
-    if (!validateForm()) {
-      setToast({ message: 'Please fill in all required shipping details before confirming.', type: 'error' });
-      return false;
-    }
-
-    // Google Tag Manager / GA4 add_shipping_info event
+  // Google Tag Manager / GA4 add_shipping_info helper
+  const triggerAddShippingInfo = () => {
     window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
+    window.dataLayer.push({ ecommerce: null });
     window.dataLayer.push({
       event: 'add_shipping_info',
       ecommerce: {
@@ -110,19 +97,10 @@ export const CheckoutPage: React.FC = () => {
         })),
       },
     });
-
-    setShippingConfirmed(true);
-    setToast({
-      message: 'Shipping information saved! (add_shipping_info event triggered)',
-      type: 'success'
-    });
-    return true;
   };
 
-  // Explicit Button Handler: Add / Confirm Payment Info
-  const handleConfirmPaymentInfo = (e?: React.MouseEvent) => {
-    if (e) e.preventDefault();
-
+  // Google Tag Manager / GA4 add_payment_info helper
+  const triggerAddPaymentInfo = (selectedMethod: PaymentMethodType) => {
     const methodLabels: Record<PaymentMethodType, string> = {
       upi: 'UPI / Instant QR',
       card: 'Credit / Debit Card',
@@ -130,15 +108,14 @@ export const CheckoutPage: React.FC = () => {
       cod: 'Cash on Delivery'
     };
 
-    // Google Tag Manager / GA4 add_payment_info event
     window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
+    window.dataLayer.push({ ecommerce: null });
     window.dataLayer.push({
       event: 'add_payment_info',
       ecommerce: {
         currency: 'INR',
         value: totals.total,
-        payment_type: methodLabels[paymentMethod],
+        payment_type: methodLabels[selectedMethod],
         items: items.map((item, index) => ({
           item_id: item.product.id,
           item_name: item.product.name,
@@ -150,12 +127,6 @@ export const CheckoutPage: React.FC = () => {
           index: index + 1,
         })),
       },
-    });
-
-    setPaymentConfirmed(true);
-    setToast({
-      message: `Payment option "${methodLabels[paymentMethod]}" confirmed! (add_payment_info event triggered)`,
-      type: 'success'
     });
   };
 
@@ -209,7 +180,6 @@ export const CheckoutPage: React.FC = () => {
 
   const handleInputChange = (field: keyof Customer, value: string) => {
     setCustomer((prev) => ({ ...prev, [field]: value }));
-    setShippingConfirmed(false); // Reset confirmed state if user alters details
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
@@ -217,11 +187,11 @@ export const CheckoutPage: React.FC = () => {
 
   /**
    * Application Business Logic: Place Order
-   * 1. Ensures shipping info is validated & confirmed
-   * 2. Calls order context `placeOrder()` to generate mock transaction & order object
-   * 3. Clears the cart
+   * 1. Validates customer and shipping details
+   * 2. Fires GA4 add_shipping_info and add_payment_info events
+   * 3. Calls order context `placeOrder()` to generate mock transaction & order object
    * 4. Fires dataLayer purchase event
-   * 5. Navigates to /order-success
+   * 5. Clears cart and navigates to /order-success
    */
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,14 +201,9 @@ export const CheckoutPage: React.FC = () => {
       return;
     }
 
-    // If shipping info wasn't explicitly triggered via button yet, trigger it now
-    if (!shippingConfirmed) {
-      handleConfirmShippingInfo();
-    }
-    // If payment info wasn't explicitly triggered via button yet, trigger it now
-    if (!paymentConfirmed) {
-      handleConfirmPaymentInfo();
-    }
+    // Trigger GA4 ecommerce funnel events in dataLayer
+    triggerAddShippingInfo();
+    triggerAddPaymentInfo(paymentMethod);
 
     setIsSubmitting(true);
 
@@ -302,7 +267,7 @@ export const CheckoutPage: React.FC = () => {
       <div className="border-b border-brand-stone pb-6 flex items-center justify-between">
         <div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold text-brand-noir">Checkout & Dispatch</h1>
-          <p className="text-stone-500 text-sm mt-1">Please confirm your shipping and payment options step-by-step.</p>
+          <p className="text-stone-500 text-sm mt-1">Please enter your shipping address and select your payment method.</p>
         </div>
         <Link
           to="/cart"
@@ -328,15 +293,9 @@ export const CheckoutPage: React.FC = () => {
                   Shipping Destination & Contact
                 </h2>
               </div>
-              {shippingConfirmed ? (
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1 border border-emerald-200">
-                  <Check className="w-3.5 h-3.5" /> Shipping Saved
-                </span>
-              ) : (
-                <span className="text-xs font-semibold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-full flex items-center gap-1">
-                  <Truck className="w-3.5 h-3.5" /> Express Dispatch
-                </span>
-              )}
+              <span className="text-xs font-semibold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-full flex items-center gap-1">
+                <Truck className="w-3.5 h-3.5" /> Express Dispatch
+              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -468,33 +427,6 @@ export const CheckoutPage: React.FC = () => {
               </div>
 
             </div>
-
-            {/* SEPARATE BUTTON: Save & Confirm Shipping Info */}
-            <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-              <p className="text-[11px] text-stone-500">
-                Clicking button triggers <code>add_shipping_info</code> dataLayer event.
-              </p>
-              <button
-                type="button"
-                id="add-shipping-info-btn"
-                onClick={handleConfirmShippingInfo}
-                className={`px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-sm ${
-                  shippingConfirmed
-                    ? 'bg-emerald-700 text-white hover:bg-emerald-800'
-                    : 'bg-brand-noir text-brand-gold hover:bg-brand-800 hover:text-white'
-                }`}
-              >
-                {shippingConfirmed ? (
-                  <>
-                    <Check className="w-4 h-4" /> Shipping Info Confirmed
-                  </>
-                ) : (
-                  <>
-                    <Truck className="w-4 h-4" /> Save & Add Shipping Info
-                  </>
-                )}
-              </button>
-            </div>
           </div>
 
           {/* STEP 2: Payment Method Selection */}
@@ -508,15 +440,9 @@ export const CheckoutPage: React.FC = () => {
                   Select Payment Option
                 </h2>
               </div>
-              {paymentConfirmed ? (
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1 border border-emerald-200">
-                  <Check className="w-3.5 h-3.5" /> Payment Saved
-                </span>
-              ) : (
-                <span className="text-xs text-stone-500 flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4 text-brand-600 inline" /> 256-Bit SSL Encrypted
-                </span>
-              )}
+              <span className="text-xs text-stone-500 flex items-center gap-1">
+                <ShieldCheck className="w-4 h-4 text-brand-600 inline" /> 256-Bit SSL Encrypted
+              </span>
             </div>
 
             {/* Payment Options Grid */}
@@ -524,10 +450,7 @@ export const CheckoutPage: React.FC = () => {
               
               {/* UPI / QR */}
               <div
-                onClick={() => {
-                  setPaymentMethod('upi');
-                  setPaymentConfirmed(false);
-                }}
+                onClick={() => setPaymentMethod('upi')}
                 id="payment-method-upi"
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3.5 ${
                   paymentMethod === 'upi'
@@ -552,10 +475,7 @@ export const CheckoutPage: React.FC = () => {
 
               {/* Credit / Debit Card */}
               <div
-                onClick={() => {
-                  setPaymentMethod('card');
-                  setPaymentConfirmed(false);
-                }}
+                onClick={() => setPaymentMethod('card')}
                 id="payment-method-card"
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3.5 ${
                   paymentMethod === 'card'
@@ -580,10 +500,7 @@ export const CheckoutPage: React.FC = () => {
 
               {/* Net Banking */}
               <div
-                onClick={() => {
-                  setPaymentMethod('netbanking');
-                  setPaymentConfirmed(false);
-                }}
+                onClick={() => setPaymentMethod('netbanking')}
                 id="payment-method-netbanking"
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3.5 ${
                   paymentMethod === 'netbanking'
@@ -608,10 +525,7 @@ export const CheckoutPage: React.FC = () => {
 
               {/* Cash On Delivery */}
               <div
-                onClick={() => {
-                  setPaymentMethod('cod');
-                  setPaymentConfirmed(false);
-                }}
+                onClick={() => setPaymentMethod('cod')}
                 id="payment-method-cod"
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3.5 ${
                   paymentMethod === 'cod'
@@ -649,10 +563,7 @@ export const CheckoutPage: React.FC = () => {
                   <input
                     type="text"
                     value={upiId}
-                    onChange={(e) => {
-                      setUpiId(e.target.value);
-                      setPaymentConfirmed(false);
-                    }}
+                    onChange={(e) => setUpiId(e.target.value)}
                     placeholder="yourname@upi"
                     className="w-full px-4 py-2 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 font-mono"
                   />
@@ -669,10 +580,7 @@ export const CheckoutPage: React.FC = () => {
                     <input
                       type="text"
                       value={cardDetails.number}
-                      onChange={(e) => {
-                        setCardDetails({ ...cardDetails, number: e.target.value });
-                        setPaymentConfirmed(false);
-                      }}
+                      onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value })}
                       className="w-full px-4 py-2 bg-white border border-stone-300 rounded-lg text-sm font-mono text-stone-900"
                     />
                   </div>
@@ -682,10 +590,7 @@ export const CheckoutPage: React.FC = () => {
                       <input
                         type="text"
                         value={cardDetails.expiry}
-                        onChange={(e) => {
-                          setCardDetails({ ...cardDetails, expiry: e.target.value });
-                          setPaymentConfirmed(false);
-                        }}
+                        onChange={(e) => setCardDetails({ ...cardDetails, expiry: e.target.value })}
                         className="w-full px-4 py-2 bg-white border border-stone-300 rounded-lg text-sm font-mono text-stone-900"
                       />
                     </div>
@@ -694,10 +599,7 @@ export const CheckoutPage: React.FC = () => {
                       <input
                         type="password"
                         value={cardDetails.cvv}
-                        onChange={(e) => {
-                          setCardDetails({ ...cardDetails, cvv: e.target.value });
-                          setPaymentConfirmed(false);
-                        }}
+                        onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value })}
                         className="w-full px-4 py-2 bg-white border border-stone-300 rounded-lg text-sm font-mono text-stone-900"
                       />
                     </div>
@@ -710,10 +612,7 @@ export const CheckoutPage: React.FC = () => {
                   <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">Select Bank</label>
                   <select
                     value={selectedBank}
-                    onChange={(e) => {
-                      setSelectedBank(e.target.value);
-                      setPaymentConfirmed(false);
-                    }}
+                    onChange={(e) => setSelectedBank(e.target.value)}
                     className="w-full px-4 py-2.5 bg-white border border-stone-300 rounded-lg text-sm text-stone-900 font-medium"
                   >
                     <option value="HDFC Bank">HDFC Bank</option>
@@ -731,44 +630,6 @@ export const CheckoutPage: React.FC = () => {
                   <p>You can pay via Cash, QR, or Card terminal when our courier arrives with your handcrafted perfume.</p>
                 </div>
               )}
-            </div>
-
-            {/* SEPARATE BUTTON: Confirm & Add Payment Info */}
-            <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-              <p className="text-[11px] text-stone-500">
-                Clicking button triggers <code>add_payment_info</code> dataLayer event.
-              </p>
-              <button
-                type="button"
-                id="add-payment-info-btn"
-                onClick={handleConfirmPaymentInfo}
-                className={`px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-sm ${
-                  paymentConfirmed
-                    ? 'bg-emerald-700 text-white hover:bg-emerald-800'
-                    : 'bg-brand-noir text-brand-gold hover:bg-brand-800 hover:text-white'
-                }`}
-              >
-                {paymentConfirmed ? (
-                  <>
-                    <Check className="w-4 h-4" /> Payment Info Confirmed
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="w-4 h-4" /> Save & Add Payment Info
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Testing Environment Notice */}
-          <div className="bg-brand-stone/40 border border-brand-stone rounded-2xl p-5 flex items-start gap-4 text-xs text-stone-700">
-            <ShieldCheck className="w-5 h-5 text-brand-600 shrink-0 mt-0.5" />
-            <div>
-              <strong className="block font-bold text-stone-900">Independent DataLayer Triggers</strong>
-              <span>
-                Use the dedicated <strong>Save & Add Shipping Info</strong> and <strong>Save & Add Payment Info</strong> buttons to fire each event individually before authorizing the purchase.
-              </span>
             </div>
           </div>
 
