@@ -1,24 +1,11 @@
 /**
- * IngestLabs / MagicPixel tracking integration & GTM DataLayer Bridge
+ * IngestLabs / MagicPixel tracking integration
  */
 
-// Ensure global eedl array bus and GTM dataLayer bridge exist immediately
+// Ensure global eedl array bus and dataLayer exist without overriding their push handlers
 if (typeof window !== 'undefined') {
   window.eedl = window.eedl || [];
   window.dataLayer = window.dataLayer || [];
-
-  if (!window._eedlGtmBridgeInitialized) {
-    window._eedlGtmBridgeInitialized = true;
-    const originalEedlPush = window.eedl.push;
-    window.eedl.push = function (...items) {
-      items.forEach((item) => {
-        if (window.dataLayer && typeof window.dataLayer.push === 'function') {
-          window.dataLayer.push(item);
-        }
-      });
-      return originalEedlPush.apply(this, items);
-    };
-  }
 }
 
 const getPageName = (pathname) => {
@@ -41,10 +28,6 @@ const getPageName = (pathname) => {
 export const trackPageLoad = (customPageName, extraData = {}) => {
   if (typeof window === 'undefined') return;
 
-  // 1. Ensure window.eedl & dataLayer are initialized
-  window.eedl = window.eedl || [];
-  window.dataLayer = window.dataLayer || [];
-
   const pathname = window.location.pathname;
   const pageName = customPageName || (document.title && document.title.trim()) || getPageName(pathname);
   const isProd = !/localhost|127\.0\.0\.1/.test(window.location.hostname);
@@ -64,7 +47,7 @@ export const trackPageLoad = (customPageName, extraData = {}) => {
         pageName: pageName,
       },
     },
-    // Also include flat dot-notation keys for backwards compatibility with any tag expecting them
+    // Also include flat dot-notation keys for backwards compatibility
     'page.pageInfo.pageName': pageName,
     'env.pageUrl': window.location.href,
     'env.referrer': document.referrer || '',
@@ -76,25 +59,33 @@ export const trackPageLoad = (customPageName, extraData = {}) => {
 
   const dispatchEvent = () => {
     try {
-      // 1. Push to window.eedl (which automatically forwards to window.dataLayer via the bridge)
-      if (Array.isArray(window.eedl)) {
+      // 1. Dispatch into Ingest Labs / MagicPixel without altering eedl.push
+      if (window.eedl && typeof window.eedl.push === 'function') {
         window.eedl.push(eventPayload);
-      } else {
-        // Fallback: push directly to window.dataLayer if eedl is not an array
-        if (window.dataLayer && typeof window.dataLayer.push === 'function') {
-          window.dataLayer.push(eventPayload);
+        window.eedl.push(['page_load', eventPayload]);
+      }
+      if (window.mpDl && typeof window.mpDl.push === 'function') {
+        window.mpDl.push(['page_load', eventPayload]);
+      }
+
+      // Direct IngestLabs EEDL runtime dispatcher if available
+      if (window._mp && typeof window._mp.eedlInstance === 'function') {
+        const instance = window._mp.eedlInstance();
+        if (instance && typeof instance.eventProcessor === 'function') {
+          try {
+            instance.eventProcessor('page_load', eventPayload);
+          } catch (e) {
+            // Safe fallback if already handled by queue
+          }
         }
       }
 
-      // 2. Also invoke as a function if the SDK has wrapped eedl into a function
-      if (typeof window.eedl === 'function') {
-        window.eedl('page_load', eventPayload);
-      } else if (typeof eedl === 'function') {
-        // @ts-ignore
-        eedl('page_load', eventPayload);
+      // 2. Separately mirror into GTM dataLayer without touching eedl
+      if (window.dataLayer && typeof window.dataLayer.push === 'function') {
+        window.dataLayer.push(eventPayload);
       }
     } catch (err) {
-      console.warn('[IngestLabs] Error dispatching eedl event:', err);
+      console.warn('[IngestLabs] Error dispatching event:', err);
     }
   };
 
@@ -124,7 +115,7 @@ export const trackPageLoad = (customPageName, extraData = {}) => {
       }
     );
   } else {
-    // If _mp SDK is not yet available, immediately push so it is queued!
+    // If _mp SDK is not yet available, immediately push so it is queued in arrays
     dispatchEvent();
   }
 };

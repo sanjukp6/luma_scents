@@ -5,26 +5,12 @@
   <link rel="preconnect" href="https://sdk.magicpixel.dev" crossorigin />
   <link rel="dns-prefetch" href="https://sdk.magicpixel.dev" />
 
-  <!-- IngestLabs / MagicPixel EEDL Event Bus & GTM Bridge -->
+  <!-- IngestLabs / MagicPixel EEDL Event Bus -->
   <script>
     window.eedl = window.eedl || [];
     window.dataLayer = window.dataLayer || [];
-
-    if (!window._eedlGtmBridgeInitialized) {
-      window._eedlGtmBridgeInitialized = true;
-      var originalEedlPush = window.eedl.push;
-      window.eedl.push = function () {
-        var items = Array.prototype.slice.call(arguments);
-        for (var i = 0; i < items.length; i++) {
-          if (window.dataLayer && typeof window.dataLayer.push === 'function') {
-            window.dataLayer.push(items[i]);
-          }
-        }
-        return originalEedlPush.apply(this, items);
-      };
-    }
   </script>
-  <script src="https://sdk.magicpixel.dev/MP1wzikge0yqdaisj2s5y93.js"></script>
+  <script id="mp-client-sdk" src="https://sdk.magicpixel.dev/MP1wzikge0yqdaisj2s5y93.js" data-dlVar="eedl" data-dlInitMode="manual" data-dlInitEvent="page_load"></script>
   <script>
     if (window._mp && typeof window._mp.waitUntil === 'function') {
       window._mp.waitUntil(function() { return window._mp && window._mp.eedlInstance; }, 15000, 100, function () {
@@ -55,14 +41,17 @@
             'env.app_version': '1.0.0'
           };
 
+          // 1. Official Ingest Labs / MagicPixel push (without overriding eedl.push)
           window.eedl = window.eedl || [];
           window.eedl.push(eventData);
-
-          if (typeof window.eedl === 'function') {
-            window.eedl('page_load', eventData);
-          } else if (typeof eedl === 'function') {
-            eedl('page_load', eventData);
+          window.eedl.push(['page_load', eventData]);
+          if (window.mpDl) {
+            window.mpDl.push(['page_load', eventData]);
           }
+
+          // 2. Separately mirror into GTM dataLayer
+          window.dataLayer = window.dataLayer || [];
+          window.dataLayer.push(eventData);
         })();
       });
     }
