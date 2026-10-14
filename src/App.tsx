@@ -14,13 +14,16 @@ import { OffersPage } from './pages/OffersPage';
 import { RefundPage } from './pages/RefundPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
-// Scroll restoration component
-const ScrollToTop: React.FC = () => {
-  const { pathname, search } = useLocation();
+import { trackPageLoad } from './ingestLabsTracking';
+
+// Scroll restoration and route change tracking component
+const RouteTracker: React.FC = () => {
+  const { pathname, search, hash } = useLocation();
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [pathname, search]);
+    trackPageLoad();
+  }, [pathname, search, hash]);
 
   return null;
 };
@@ -30,7 +33,7 @@ export const App: React.FC = () => {
     <Router>
       <CartProvider>
         <OrderProvider>
-          <ScrollToTop />
+          <RouteTracker />
           <div className="min-h-screen flex flex-col bg-brand-sand selection:bg-brand-500 selection:text-white">
             <Navbar />
             <main className="flex-1">

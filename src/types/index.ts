@@ -79,6 +79,8 @@ export interface CartTotals {
 declare global {
   interface Window {
     dataLayer?: Record<string, any>[];
+    _mp?: any;
+    eedl?: any;
   }
 }
 

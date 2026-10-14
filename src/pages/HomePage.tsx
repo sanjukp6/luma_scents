@@ -4,7 +4,7 @@ import { ArrowRight, Sparkles, Droplets, Compass, Award, Flame } from 'lucide-re
 import { PRODUCTS, OFFER_PRODUCTS } from '../data/products';
 import { ProductCard } from '../components/ProductCard';
 import { Toast } from '../components/Toast';
-import { useEffect } from 'react';
+
 export const HomePage: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
