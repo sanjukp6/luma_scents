@@ -1,10 +1,24 @@
 /**
- * IngestLabs / MagicPixel tracking integration
+ * IngestLabs / MagicPixel tracking integration & GTM DataLayer Bridge
  */
 
-// Ensure global eedl array bus exists immediately
+// Ensure global eedl array bus and GTM dataLayer bridge exist immediately
 if (typeof window !== 'undefined') {
   window.eedl = window.eedl || [];
+  window.dataLayer = window.dataLayer || [];
+
+  if (!window._eedlGtmBridgeInitialized) {
+    window._eedlGtmBridgeInitialized = true;
+    const originalEedlPush = window.eedl.push;
+    window.eedl.push = function (...items) {
+      items.forEach((item) => {
+        if (window.dataLayer && typeof window.dataLayer.push === 'function') {
+          window.dataLayer.push(item);
+        }
+      });
+      return originalEedlPush.apply(this, items);
+    };
+  }
 }
 
 const getPageName = (pathname) => {
@@ -20,15 +34,16 @@ const getPageName = (pathname) => {
 };
 
 /**
- * Tracks route change / page load event for IngestLabs / MagicPixel EEDL
+ * Tracks route change / page load event for IngestLabs / MagicPixel EEDL & GTM
  * @param {string} [customPageName] - Optional override for page name
  * @param {Record<string, any>} [extraData] - Additional payload properties
  */
 export const trackPageLoad = (customPageName, extraData = {}) => {
   if (typeof window === 'undefined') return;
 
-  // 1. Ensure window.eedl is initialized as an array event bus
+  // 1. Ensure window.eedl & dataLayer are initialized
   window.eedl = window.eedl || [];
+  window.dataLayer = window.dataLayer || [];
 
   const pathname = window.location.pathname;
   const pageName = customPageName || (document.title && document.title.trim()) || getPageName(pathname);
@@ -61,9 +76,14 @@ export const trackPageLoad = (customPageName, extraData = {}) => {
 
   const dispatchEvent = () => {
     try {
-      // 1. Push to the shared global array bus so tags and listeners can subscribe
+      // 1. Push to window.eedl (which automatically forwards to window.dataLayer via the bridge)
       if (Array.isArray(window.eedl)) {
         window.eedl.push(eventPayload);
+      } else {
+        // Fallback: push directly to window.dataLayer if eedl is not an array
+        if (window.dataLayer && typeof window.dataLayer.push === 'function') {
+          window.dataLayer.push(eventPayload);
+        }
       }
 
       // 2. Also invoke as a function if the SDK has wrapped eedl into a function
@@ -104,7 +124,7 @@ export const trackPageLoad = (customPageName, extraData = {}) => {
       }
     );
   } else {
-    // If _mp SDK is not yet available, immediately push to window.eedl array so it is queued!
+    // If _mp SDK is not yet available, immediately push so it is queued!
     dispatchEvent();
   }
 };
