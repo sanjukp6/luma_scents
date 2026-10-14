@@ -14,6 +14,23 @@ export const HomePage: React.FC = () => {
   const showNotification = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
   };
+ //this is IL script for page load
+  window._mp.waitUntil(function() { return _mp && _mp.eedlInstance; }, 15000, 100, function () {
+  _mp.eedlInstance().ready();
+  window._mp.safeExecute('evPageLoad', function() {
+    var isProd = /www\.example\.com/.test(window.location.href);
+    var payload = {
+      'page.pageInfo.pageName': document.title,
+      'env.pageUrl': window.location.href,
+      'env.referrer': document.referrer,
+      'env.pathName': window.location.pathname,
+      'env.rs': isProd ? 'prd' : 'stg',
+      'env.app_version': '<git_hash or app_version automated>',
+    };
+
+    eedl('page_load', payload);
+  })();
+});
 
   // Google Tag Manager / GA4 view_promotion event on homepage load
   useEffect(() => {
