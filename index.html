@@ -2,24 +2,53 @@
 <html lang="en">
 
 <head>
-
+  <!-- IngestLabs / MagicPixel EEDL Event Bus -->
+  <script>
+    window.eedl = window.eedl || [];
+  </script>
   <script src="https://sdk.magicpixel.dev/MP1wzikge0yqdaisj2s5y93.js"></script>
-   <script>window._mp.waitUntil(function() { return _mp && _mp.eedlInstance; }, 15000, 100, function () {
-  _mp.eedlInstance().ready();
-  window._mp.safeExecute('evPageLoad', function() {
-    var isProd = /www\.example\.com/.test(window.location.href);
-    var payload = {
-      'page.pageInfo.pageName': document.title,
-      'env.pageUrl': window.location.href,
-      'env.referrer': document.referrer,
-      'env.pathName': window.location.pathname,
-      'env.rs': isProd ? 'prd' : 'stg',
-      'env.app_version': '<git_hash or app_version automated>',
-    };
+  <script>
+    if (window._mp && typeof window._mp.waitUntil === 'function') {
+      window._mp.waitUntil(function() { return window._mp && window._mp.eedlInstance; }, 15000, 100, function () {
+        if (window._mp.eedlInstance && typeof window._mp.eedlInstance().ready === 'function') {
+          window._mp.eedlInstance().ready();
+        }
+        window._mp.safeExecute('evPageLoad', function() {
+          var isProd = !/localhost|127\.0\.0\.1/.test(window.location.hostname);
+          var eventData = {
+            event: 'page_load',
+            env: {
+              pageUrl: window.location.href,
+              pathName: window.location.pathname,
+              referrer: document.referrer || '',
+              rs: isProd ? 'prd' : 'stg',
+              app_version: '1.0.0'
+            },
+            page: {
+              pageInfo: {
+                pageName: document.title || 'Luma Scents'
+              }
+            },
+            'page.pageInfo.pageName': document.title || 'Luma Scents',
+            'env.pageUrl': window.location.href,
+            'env.referrer': document.referrer || '',
+            'env.pathName': window.location.pathname,
+            'env.rs': isProd ? 'prd' : 'stg',
+            'env.app_version': '1.0.0'
+          };
 
-    eedl('page_load', payload);
-  })();
-});</script>
+          window.eedl = window.eedl || [];
+          window.eedl.push(eventData);
+
+          if (typeof window.eedl === 'function') {
+            window.eedl('page_load', eventData);
+          } else if (typeof eedl === 'function') {
+            eedl('page_load', eventData);
+          }
+        })();
+      });
+    }
+  </script>
   <!-- Google Tag Manager -->
   <script>(function (w, d, s, l, i) {
       w[l] = w[l] || []; w[l].push({

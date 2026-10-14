@@ -2,6 +2,11 @@
  * IngestLabs / MagicPixel tracking integration
  */
 
+// Ensure global eedl array bus exists immediately
+if (typeof window !== 'undefined') {
+  window.eedl = window.eedl || [];
+}
+
 const getPageName = (pathname) => {
   if (pathname === '/') return 'Home | Luma Scents';
   if (pathname === '/products') return 'Products | Luma Scents';
@@ -22,12 +27,29 @@ const getPageName = (pathname) => {
 export const trackPageLoad = (customPageName, extraData = {}) => {
   if (typeof window === 'undefined') return;
 
+  // 1. Ensure window.eedl is initialized as an array event bus
+  window.eedl = window.eedl || [];
+
   const pathname = window.location.pathname;
   const pageName = customPageName || (document.title && document.title.trim()) || getPageName(pathname);
-
   const isProd = !/localhost|127\.0\.0\.1/.test(window.location.hostname);
 
-  const payload = {
+  // Structured event according to SDL (Software Data Layer) specification
+  const eventPayload = {
+    event: 'page_load',
+    env: {
+      pageUrl: window.location.href,
+      pathName: pathname,
+      referrer: document.referrer || '',
+      rs: isProd ? 'prd' : 'stg',
+      app_version: '1.0.0',
+    },
+    page: {
+      pageInfo: {
+        pageName: pageName,
+      },
+    },
+    // Also include flat dot-notation keys for backwards compatibility with any tag expecting them
     'page.pageInfo.pageName': pageName,
     'env.pageUrl': window.location.href,
     'env.referrer': document.referrer || '',
@@ -37,22 +59,26 @@ export const trackPageLoad = (customPageName, extraData = {}) => {
     ...extraData,
   };
 
-  const fireEedl = () => {
+  const dispatchEvent = () => {
     try {
+      // 1. Push to the shared global array bus so tags and listeners can subscribe
+      if (Array.isArray(window.eedl)) {
+        window.eedl.push(eventPayload);
+      }
+
+      // 2. Also invoke as a function if the SDK has wrapped eedl into a function
       if (typeof window.eedl === 'function') {
-        window.eedl('page_load', payload);
+        window.eedl('page_load', eventPayload);
       } else if (typeof eedl === 'function') {
         // @ts-ignore
-        eedl('page_load', payload);
-      } else {
-        console.log('[IngestLabs] eedl page_load tracked:', payload);
+        eedl('page_load', eventPayload);
       }
     } catch (err) {
-      console.warn('[IngestLabs] Error triggering eedl:', err);
+      console.warn('[IngestLabs] Error dispatching eedl event:', err);
     }
   };
 
-  // Check if MagicPixel SDK (_mp) is present
+  // Safe execution with MagicPixel SDK (_mp) if present
   const mp = window._mp;
   if (mp && typeof mp.waitUntil === 'function') {
     mp.waitUntil(
@@ -67,19 +93,19 @@ export const trackPageLoad = (customPageName, extraData = {}) => {
             window._mp.eedlInstance().ready();
           }
         } catch (e) {
-          // ignore if already ready
+          // Safe ignore if already ready
         }
 
         if (typeof window._mp.safeExecute === 'function') {
-          window._mp.safeExecute('evPageLoad', fireEedl)();
+          window._mp.safeExecute('evPageLoad', dispatchEvent)();
         } else {
-          fireEedl();
+          dispatchEvent();
         }
       }
     );
   } else {
-    // Direct call if _mp is not wrapping or in dev mode
-    fireEedl();
+    // If _mp SDK is not yet available, immediately push to window.eedl array so it is queued!
+    dispatchEvent();
   }
 };
 
