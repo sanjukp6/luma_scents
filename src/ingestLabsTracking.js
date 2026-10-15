@@ -59,8 +59,10 @@ export const trackPageLoad = (customPageName, extraData = {}) => {
 
   const dispatchEvent = () => {
     try {
-      // 1. Dispatch into Ingest Labs / MagicPixel without altering eedl.push
-      if (window.eedl && typeof window.eedl.push === 'function') {
+      // 1. Dispatch into Ingest Labs / MagicPixel
+      if (typeof window.eedl === 'function') {
+        window.eedl('page_load', eventPayload);
+      } else if (window.eedl && typeof window.eedl.push === 'function') {
         window.eedl.push(eventPayload);
         window.eedl.push(['page_load', eventPayload]);
       }
@@ -170,7 +172,9 @@ export const trackAddToCart = (product, quantity = 1, extraData = {}) => {
   const dispatchEvent = () => {
     try {
       // 1. Dispatch into Ingest Labs / MagicPixel EEDL
-      if (window.eedl && typeof window.eedl.push === 'function') {
+      if (typeof window.eedl === 'function') {
+        window.eedl('add_to_cart', eventPayload);
+      } else if (window.eedl && typeof window.eedl.push === 'function') {
         window.eedl.push(eventPayload);
         window.eedl.push(['add_to_cart', eventPayload]);
       }

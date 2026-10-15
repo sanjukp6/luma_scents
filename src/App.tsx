@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { OrderProvider } from './context/OrderContext';
 import { Navbar } from './components/Navbar';
@@ -13,27 +13,14 @@ import { OrderSuccessPage } from './pages/OrderSuccessPage';
 import { OffersPage } from './pages/OffersPage';
 import { RefundPage } from './pages/RefundPage';
 import { NotFoundPage } from './pages/NotFoundPage';
-
-import { trackPageLoad } from './ingestLabsTracking';
-
-// Scroll restoration and route change tracking component
-const RouteTracker: React.FC = () => {
-  const { pathname, search, hash } = useLocation();
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    trackPageLoad();
-  }, [pathname, search, hash]);
-
-  return null;
-};
+import IngestPageLoad from './components/IngestPageLoad';
 
 export const App: React.FC = () => {
   return (
     <Router>
       <CartProvider>
         <OrderProvider>
-          <RouteTracker />
+          <IngestPageLoad />
           <div className="min-h-screen flex flex-col bg-brand-sand selection:bg-brand-500 selection:text-white">
             <Navbar />
             <main className="flex-1">

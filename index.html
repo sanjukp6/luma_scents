@@ -7,8 +7,67 @@
 
   <!-- IngestLabs / MagicPixel EEDL Event Bus -->
   <script>
-    window.eedl = window.eedl || [];
+    // Step 1: Backup current implementation
+    window._oldEedl = window.eedl;
+
+    // Step 2 & 5: Function-based eedl dispatcher
     window.dataLayer = window.dataLayer || [];
+    window.eedl = function(eventName, payload = {}) {
+      console.log("[eedl]", eventName, payload);
+      const eventObject = {
+        event: eventName,
+        ...payload
+      };
+      // Send to GTM dataLayer
+      window.dataLayer.push(eventObject);
+      // Optional internal storage
+      window.eedl.events.push(eventObject);
+
+      // If IngestLabs / MagicPixel runtime is ready, forward to processor
+      if (window._mp && typeof window._mp.eedlInstance === 'function') {
+        try {
+          const instance = window._mp.eedlInstance();
+          if (instance && typeof instance.eventProcessor === 'function') {
+            instance.eventProcessor(eventName, eventObject);
+          }
+        } catch (e) {
+          // Safe fallback
+        }
+      }
+
+      return eventObject;
+    };
+
+    // Step 3: Add internal event storage
+    window.eedl.events = [];
+
+    // Step 4: Backward compatibility for .push()
+    window.eedl.push = function(obj) {
+      if (!obj) {
+        console.warn("Invalid EEDL push object", obj);
+        return;
+      }
+      // Support array style: ['event_name', payload]
+      if (Array.isArray(obj)) {
+        const eventName = typeof obj[0] === 'string' ? obj[0] : (obj[1]?.event || 'custom_event');
+        const payload = (typeof obj[1] === 'object' && obj[1] !== null) ? obj[1] : {};
+        return window.eedl(eventName, payload);
+      }
+      if (!obj.event) {
+        console.warn("Invalid EEDL push object", obj);
+        return;
+      }
+      return window.eedl(obj.event, obj);
+    };
+
+    // Support array iterable and splice for Ingest Labs SDL runtime queue draining
+    window.eedl[Symbol.iterator] = function*() {
+      yield* window.eedl.events;
+    };
+    window.eedl.splice = function(start, deleteCount) {
+      const items = Array.prototype.slice.call(arguments, 2);
+      return Array.prototype.splice.apply(window.eedl.events, [start, deleteCount].concat(items));
+    };
   </script>
   <script id="mp-client-sdk" src="https://sdk.magicpixel.dev/MP1wzikge0yqdaisj2s5y93.js" data-dlVar="eedl" data-dlInitMode="manual" data-dlInitEvent="page_load"></script>
   <script>
