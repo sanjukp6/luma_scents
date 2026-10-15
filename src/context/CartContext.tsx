@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, CartItem, CartTotals } from '../types';
+import { trackAddToCart } from '../ingestLabsTracking';
 
 interface CartContextType {
   items: CartItem[];
@@ -81,6 +82,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       setItems((prev) => [...prev, { product, quantity }]);
     }
+
+    // Trigger IngestLabs EEDL, Meta Pixel & GTM tracking for add_to_cart
+    trackAddToCart(product, quantity);
 
     return {
       success: true,

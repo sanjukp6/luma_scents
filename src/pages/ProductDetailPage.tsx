@@ -96,25 +96,6 @@ export const ProductDetailPage: React.FC = () => {
         type: 'success'
       });
 
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({ ecommerce: null }); // Clear previous ecommerce object
-      window.dataLayer.push({
-        event: "add_to_cart",
-        ecommerce: {
-          currency: "INR",
-          value: product.price * quantity,
-          items: [{
-            item_id: product.id,
-            item_name: product.name,
-            item_brand: product.brand,
-            item_category: product.category,
-            item_variant: product.variant,
-            price: product.price,
-            quantity: quantity
-          }]
-        }
-      });
-
       setTimeout(() => setJustAdded(false), 2000);
     } else {
       setToast({ message: result.message, type: 'error' });

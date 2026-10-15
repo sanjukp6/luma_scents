@@ -81,6 +81,8 @@ declare global {
     dataLayer?: Record<string, any>[];
     _mp?: any;
     eedl?: any;
+    mpDl?: any;
+    fbq?: any;
   }
 }
 
